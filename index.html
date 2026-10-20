@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, interactive-widget=resizes-content, viewport-fit=cover" />
-<title>LoR PoC Build Builder — 4 Tab Edition v1.1</title>
+<title>LoR PoC Build Builder — 4 Tab Edition v1.4</title>
 <style>
   :root{--bg:#07111d;--panel:#0d1b2b;--panel2:#12243a;--line:#234361;--text:#eef5ff;--muted:#93abc2;--accent:#f3c54e;--cyan:#63d8ff;--danger:#ff7777;--glow:rgba(74,190,255,.14)}
   *{box-sizing:border-box}
@@ -399,6 +399,7 @@ textarea{background:#fff!important;color:#30464c!important;border-color:#bdcfcb!
 </style>
 <!-- v161: Adventure type labels + Star Power titles in editor and exports -->
 <!-- v164: fix Nunu region, normalize Golden Spatula, reorder selected items, center horizontal relic text, warn above level 50. -->
+<meta name="lor-poc-builder-version" content="v1.4 - targeted Tier List fixes"><!-- v1.4: hide forbidden fixed-tab deletion controls; make Every Region subtitle editing follow the active region build. -->
 </head>
 <body>
 <div class="app">
@@ -5277,12 +5278,12 @@ function initBuilderStores(){
 }
 function builderSaveCurrent(){if(builderLoadingSnapshot||!builderStores[builderTab])return;const b=builderStores[builderTab].builds[builderActiveIndex];if(!b)return;b.data=builderCloneState(state);b.data.builderStars=[...builderStarSet].sort((a,b)=>a-b);}
 function builderLoadCurrent(){const store=builderStores[builderTab];if(!store||!store.builds.length){state=blankBuilderState(builderSelectedRegion||DATA.regions[0]?.name||'Bandle City');builderActiveIndex=0;builderStarSet=new Set([1,2,3]);return}builderActiveIndex=Math.max(0,Math.min(store.active,store.builds.length-1));const b=store.builds[builderActiveIndex];state=builderCloneState(b.data);const saved=b.data.builderStars;if(Array.isArray(saved))builderStarSet=new Set(saved.map(Number).filter(n=>n>=1&&n<=6));else {const count=Math.max(0,Math.min(6,Number(saved??3)));builderStarSet=new Set(Array.from({length:count},(_,i)=>i+1));}if(!state.champion&&builderTab===1)state.region=b.title; if(builderTab===2||builderTab===3)state.region=state.region||builderSelectedRegion||DATA.regions[0]?.name||'Bandle City';}
-function builderUpdateTitle(){const input=el('builderSubtitle');if(!input)return;const store=builderStores[builderTab];if(builderTab===0){input.value=store?.builds?.[builderActiveIndex]?.title||'No Paid Relics';input.placeholder='Enter build subtitle';}else input.value=builderSubtitleValues[builderTab]||'';}
+function builderUpdateTitle(){const input=el('builderSubtitle');if(!input)return;const store=builderStores[builderTab];if(builderTab===0){input.value=store?.builds?.[builderActiveIndex]?.title||'No Paid Relics';input.placeholder='Enter build subtitle';}else if(builderTab===1){const active=store?.builds?.[builderActiveIndex];input.value=active?.subtitle||active?.title||active?.data?.region||'';}else input.value=builderSubtitleValues[builderTab]||'';}
 function builderRenderBuilds(){const store=builderStores[builderTab],wrap=el('builderBuilds');if(!wrap)return;wrap.innerHTML='';store.builds.forEach((b,i)=>{const btn=document.createElement('button');btn.type='button';btn.className='builder-build-chip'+(i===builderActiveIndex?' active':'');btn.textContent=(i+1)+'. '+(b.title||b.data?.champion||'Build');btn.setAttribute('aria-pressed',String(i===builderActiveIndex));btn.onclick=()=>{builderSaveCurrent();store.active=i;builderActiveIndex=i;builderLoadCurrent();builderRenderUI();renderAll();};wrap.appendChild(btn)});}
 function builderRenderStars(){const box=el('builderStars');if(!box)return;box.innerHTML='';for(let i=1;i<=6;i++){const b=document.createElement('button');const active=builderStarSet.has(i);b.type='button';b.className='builder-star'+(active?' on':'');b.textContent=active?'★':'☆';b.title=`Toggle ${i} star`;b.setAttribute('aria-label',b.title);b.setAttribute('aria-pressed',String(active));b.onclick=()=>{if(builderStarSet.has(i))builderStarSet.delete(i);else builderStarSet.add(i);builderSaveCurrent();builderRenderStars()};box.appendChild(b)}}
-function builderRenderUI(){document.querySelectorAll('.builder-tab').forEach(b=>b.classList.toggle('active',Number(b.dataset.tab)===builderTab));builderUpdateTitle();const regionWrap=el('builderRegionPicker'),sel=el('builderRegionSelect'),add=el('builderAddBtn'),del=el('builderDeleteBtn'),reset=el('builderResetBtn'),exportH=el('builderExportH'),exportV=el('builderExportV');if(sel){sel.innerHTML=(DATA.regions||[]).map(r=>`<option value="${esc(r.name)}">${esc(r.name)}</option>`).join('');sel.value=builderSelectedRegion||DATA.regions[0]?.name||''}if(regionWrap)regionWrap.style.display=builderTab===2?'block':'none';if(add)add.style.display=builderTab===3?'inline-block':'none';if(del)del.style.display=builderTab===0?'none':'inline-block';if(reset)reset.style.display=builderTab===0?'none':'inline-block';if(exportH)exportH.style.display=builderTab===0?'none':'inline-block';if(exportV)exportV.style.display=builderTab===0||builderTab===1||builderTab===2?'none':'inline-block';const hint=el('builderHint');if(hint)hint.textContent=[`Choose a build below to edit its subtitle and settings. Each build has its own selections.`,`One build per region. Region list and count are loaded from the existing dataset.`,`Choose a region to generate its champion list. Champion order follows the existing champion data; remove individual builds as needed.`,`Free Style: add, delete, and reorder builds using the existing champion and relic selector.`][builderTab];builderRenderBuilds();builderRenderStars();}
+function builderRenderUI(){document.querySelectorAll('.builder-tab').forEach(b=>b.classList.toggle('active',Number(b.dataset.tab)===builderTab));builderUpdateTitle();const regionWrap=el('builderRegionPicker'),sel=el('builderRegionSelect'),add=el('builderAddBtn'),del=el('builderDeleteBtn'),reset=el('builderResetBtn'),exportH=el('builderExportH'),exportV=el('builderExportV');if(sel){sel.innerHTML=(DATA.regions||[]).map(r=>`<option value="${esc(r.name)}">${esc(r.name)}</option>`).join('');sel.value=builderSelectedRegion||DATA.regions[0]?.name||''}if(regionWrap)regionWrap.style.display=builderTab===2?'block':'none';if(add)add.style.display=builderTab===3?'inline-block':'none';if(del)del.style.display=(builderTab===0||builderTab===1)?'none':'inline-block';if(reset)reset.style.display=builderTab===0?'none':'inline-block';if(exportH)exportH.style.display=(builderTab===1||builderTab===2||builderTab===3)?'inline-block':'none';if(exportV)exportV.style.display=(builderTab===0||builderTab===3)?'inline-block':'none';const hint=el('builderHint');if(hint)hint.textContent=[`Choose a build below to edit its subtitle and settings. Each build has its own selections.`,`One build per region. Region list and count are loaded from the existing dataset.`,`Choose a region to generate its champion list. Champion order follows the existing champion data; remove individual builds as needed.`,`Free Style: add, delete, and reorder builds using the existing champion and relic selector.`][builderTab];builderRenderBuilds();builderRenderStars();}
 function switchBuilderTab(i){builderSaveCurrent();builderTab=i;const st=builderStores[i];builderActiveIndex=st.active||0;if(i===2&&!st.builds.length&&builderSelectedRegion)buildTab3Champions(builderSelectedRegion);builderLoadCurrent();builderRenderUI();renderAll();}
-function updateBuilderSubtitle(v){const store=builderStores[builderTab];if(builderTab===0&&store.builds[builderActiveIndex]){store.builds[builderActiveIndex].title=v;}else{builderSubtitleValues[builderTab]=v;if(builderTab===1&&store.builds[builderActiveIndex])store.builds[builderActiveIndex].subtitle=v;}builderRenderBuilds();}
+function updateBuilderSubtitle(v){const store=builderStores[builderTab];if(builderTab===0&&store.builds[builderActiveIndex]){store.builds[builderActiveIndex].title=v;}else if(builderTab===1){if(store.builds[builderActiveIndex])store.builds[builderActiveIndex].subtitle=v;}else{builderSubtitleValues[builderTab]=v;}builderRenderBuilds();}
 function chooseBuilderRegion(r){builderSaveCurrent();builderSelectedRegion=r;state.region=r;if(builderTab===2)buildTab3Champions(r);else if(builderTab===1){const idx=builderStores[1].builds.findIndex(b=>b.title===r);if(idx>=0){builderStores[1].active=idx;builderActiveIndex=idx;builderLoadCurrent()}}builderRenderUI();renderAll();}
 function buildTab3Champions(r){const champs=getRegionChampions(r);builderStores[2].builds=champs.map(c=>({title:c.name,data:{...blankBuilderState(r,c.name),builderStars:[1,2,3]}}));builderStores[2].active=0;builderActiveIndex=0;builderSelectedRegion=r;builderLoadCurrent();}
 function addBuilderBuild(){if(builderTab!==3)return;builderSaveCurrent();const n=builderStores[3].builds.length+1;builderStores[3].builds.push({title:`Build ${n}`,data:{...blankBuilderState(state.region,state.champion),builderStars:[1,2,3]}});builderStores[3].active=builderStores[3].builds.length-1;builderLoadCurrent();builderRenderUI();renderAll()}
@@ -5292,27 +5293,26 @@ function builderRarityColor(r){const x=String(r||'').toUpperCase();if(x.includes
 async function exportBuilderImage(direction){
  builderSaveCurrent();const store=builderStores[builderTab];
  let builds=store.builds.filter(b=>b.data?.champion);
- // Tab 1 exports the selected build as its own polished vertical poster.
- if(builderTab===0){const selected=store.builds[builderActiveIndex];builds=selected?.data?.champion?[selected]:[];direction='vertical';}
- if(!builds.length){alert('Choose a champion in at least one build before exporting.');return}
+ // Tab 1 always exports both fixed builds, stacked vertically.
+ if(builderTab===0){builds=store.builds.slice();direction='vertical';}
+ if(!builds.length||!builds.some(b=>b.data?.champion)){alert('Choose a champion in at least one build before exporting.');return}
  const vertical=direction==='vertical';
  const root=document.createElement('div');
  root.style.cssText=`position:fixed;left:-20000px;top:0;width:${vertical?'900px':'1600px'};padding:30px;background:#f7f9f6;color:#17272b;font-family:Arial,Helvetica,sans-serif;box-sizing:border-box;`;
- const overallTitle=document.createElement('div');overallTitle.textContent=builderTab===0?(builds[0].title||'Build'):(builderSubtitleValues[builderTab]||'');
- overallTitle.style.cssText='background:linear-gradient(135deg,#fff3cd 0%,#ffedb0 100%);border:3px solid #1b292b;border-bottom-width:2px;padding:24px 30px;font-size:42px;line-height:1.15;font-weight:800;letter-spacing:.01em;min-height:44px;box-shadow:0 4px 0 rgba(20,35,36,.04);';root.appendChild(overallTitle);
+ if(builderTab!==0){const overallTitle=document.createElement('div');overallTitle.textContent=builderSubtitleValues[builderTab]||'';overallTitle.style.cssText='background:linear-gradient(135deg,#fff3cd 0%,#ffedb0 100%);border:3px solid #1b292b;border-bottom-width:2px;padding:24px 30px;font-size:42px;line-height:1.15;font-weight:800;letter-spacing:.01em;min-height:44px;box-shadow:0 4px 0 rgba(20,35,36,.04);';root.appendChild(overallTitle);}
  const grid=document.createElement('div');grid.style.cssText=`display:grid;grid-template-columns:${vertical?'1fr':'1fr 1fr'};gap:0;border-left:3px solid #1b292b;border-top:0;background:#fff;`;
  for(const b of builds){const d=b.data,c=DATA.champions.find(x=>x.name===d.champion);const card=document.createElement('div');card.style.cssText='display:grid;grid-template-columns:34% 66%;border-right:3px solid #1b292b;border-bottom:3px solid #1b292b;min-height:300px;background:#fff;break-inside:avoid;';
   const left=document.createElement('div');left.style.cssText='border-right:3px solid #1b292b;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:28px 18px;gap:18px;text-align:center;background:linear-gradient(180deg,#ffffff,#fbfcfa);';
   if(c?.img){const img=document.createElement('img');img.src=c.img;img.crossOrigin='anonymous';img.style.cssText='width:clamp(110px,13vw,180px);height:clamp(110px,13vw,180px);object-fit:cover;border-radius:50%;border:4px solid #e6ece8;box-shadow:0 5px 14px rgba(21,40,43,.12);';left.appendChild(img)}
   const name=document.createElement('div');name.textContent=d.champion;name.style.cssText='font-size:clamp(26px,2.4vw,40px);line-height:1.12;font-weight:800;letter-spacing:-.025em;overflow-wrap:anywhere;';left.appendChild(name);
-  const stars=document.createElement('div');const activeStars=Array.isArray(d.builderStars)?new Set(d.builderStars.map(Number)):new Set(Array.from({length:Math.max(0,Math.min(6,Number(d.builderStars??3)))},(_,i)=>i+1));stars.style.cssText='font-size:clamp(29px,2.8vw,43px);line-height:1.15;white-space:nowrap;letter-spacing:-.08em;';stars.innerHTML=Array.from({length:6},(_,i)=>activeStars.has(i+1)?'<span style="color:#f4bd16;text-shadow:0 1px 0 #8b6b00">★</span>':'<span style="color:#7d8584">☆</span>').join('');left.appendChild(stars);card.appendChild(left);
+  const stars=document.createElement('div');const activeStars=Array.isArray(d.builderStars)?new Set(d.builderStars.map(Number)):new Set(Array.from({length:Math.max(0,Math.min(6,Number(d.builderStars??3)))},(_,i)=>i+1));stars.style.cssText='font-size:clamp(29px,2.8vw,43px);line-height:1.15;white-space:nowrap;letter-spacing:-.08em;';stars.innerHTML=Array.from({length:6},(_,i)=>activeStars.has(i+1)?'<span style="color:#f4bd16;text-shadow:0 1px 0 #8b6b00">★</span>':'<span style="color:#7d8584">☆</span>').join('');left.appendChild(stars);contentArea.appendChild(left);
   const right=document.createElement('div');right.style.cssText='display:flex;flex-direction:column;min-width:0;background:#fff;';
   const relics=(d.relics||[]).slice(0,3);for(const idx of relics){const r=DATA.relics[idx];if(!r)continue;const row=document.createElement('div');row.style.cssText='display:grid;grid-template-columns:34% 66%;min-height:100px;flex:1;border-bottom:3px solid #1b292b;';
    const iconCell=document.createElement('div');iconCell.style.cssText='display:flex;align-items:center;justify-content:center;border-right:3px solid #1b292b;padding:16px;background:#fff;';if(r.img||r.image||r.icon){const img=document.createElement('img');img.src=r.img||r.image||r.icon;img.crossOrigin='anonymous';img.style.cssText='width:clamp(78px,9vw,130px);height:clamp(78px,9vw,130px);object-fit:contain;filter:drop-shadow(0 3px 4px rgba(0,0,0,.12));';iconCell.appendChild(img)}
    const nm=document.createElement('div');nm.textContent=r.name||'';nm.style.cssText=`background:${builderRarityColor(r.rarity)};display:flex;justify-content:center;align-items:center;padding:18px 22px;font-size:clamp(22px,2vw,34px);line-height:1.18;font-weight:700;text-align:center;overflow-wrap:anywhere;`;row.append(iconCell,nm);right.appendChild(row)}
   if(d.runeKey||d.rune>=0){const rune=DATA.runes[d.rune];if(rune){const row=document.createElement('div');row.style.cssText='display:grid;grid-template-columns:34% 66%;min-height:94px;border-bottom:3px solid #1b292b;';const iconCell=document.createElement('div');iconCell.style.cssText='display:flex;align-items:center;justify-content:center;border-right:3px solid #1b292b;padding:12px;background:#fff';if(rune.img||rune.image||rune.icon){const img=document.createElement('img');img.src=rune.img||rune.image||rune.icon;img.crossOrigin='anonymous';img.style.cssText='width:90px;height:90px;object-fit:contain';iconCell.appendChild(img)}const nm=document.createElement('div');nm.textContent=rune.name||'Rune';nm.style.cssText='background:#e8def8;display:flex;justify-content:center;align-items:center;padding:16px;font-size:28px;font-weight:700;text-align:center';row.append(iconCell,nm);right.appendChild(row)}}
   if(!relics.length&&!(d.runeKey||d.rune>=0)){const empty=document.createElement('div');empty.textContent='Select up to 3 Relics';empty.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;color:#71817e;font-size:24px;font-style:italic;background:#f4f7f4';right.appendChild(empty)}
-  card.appendChild(right);grid.appendChild(card)
+  contentArea.appendChild(right);grid.appendChild(card)
  }
  root.appendChild(grid);const footer=document.createElement('div');footer.textContent='LEGENDS OF RUNETERRA · PATH OF CHAMPIONS';footer.style.cssText='text-align:right;padding:12px 4px 0;color:#778582;font-size:13px;font-weight:700;letter-spacing:.12em';root.appendChild(footer);document.body.appendChild(root);
  try{const canvas=await html2canvas(root,{scale:2,backgroundColor:'#f7f9f6',useCORS:true,allowTaint:false,logging:false});const a=document.createElement('a');a.download=`LoR-Build-Tab-${builderTab+1}-${direction}.png`;a.href=canvas.toDataURL('image/png');a.click()}catch(e){alert('Image export failed. Some source images may block capture. '+(e?.message||''))}finally{root.remove()}
@@ -5332,10 +5332,10 @@ document.addEventListener('DOMContentLoaded',async()=>{readSharedBuildFromHash()
 /* Tier-list workflow: keep the build editor collapsed until a plus action is clicked. */
 #builderTierManager{border:1px solid #c6d7d3;border-radius:14px;background:#f8fbfa;padding:12px;margin:0 0 12px}
 .tier-manager-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
-.tier-manager-title{font-weight:900;font-size:16px;color:#30484e}
+.tier-manager-title{display:none;font-weight:900;font-size:16px;color:#30484e}
 .tier-manager-actions{display:flex;gap:8px;flex-wrap:wrap}
 .tier-plus-btn,.tier-minus-btn,.tier-edit-btn{border:1px solid #c5d5d1;border-radius:9px;background:#fff;color:#30484e;font-weight:900;cursor:pointer;min-height:40px;padding:7px 13px}
-.tier-plus-btn{background:#fff0b8;border-color:#d5a82d;color:#6c5208}
+.tier-plus-btn{background:#fff0b8;border-color:#d5a82d;color:#6c5208}.tier-edit-btn{min-width:64px;padding:7px 12px;font-size:14px}
 .tier-list{display:flex;flex-direction:column;gap:8px}
 .tier-row{display:grid;grid-template-columns:72px minmax(0,1fr) auto;align-items:stretch;border:1px solid #c9d7d4;border-radius:10px;overflow:hidden;background:#fff;min-height:58px}
 .tier-label{display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;background:#e4efec;border-right:1px solid #c9d7d4;padding:8px}
@@ -5350,69 +5350,16 @@ body:not(.builder-editing) #builderEditorFields,body:not(.builder-editing) .app>
 #builderEditorFields .builder-panel{margin:0}
 @media(max-width:620px){.tier-row{grid-template-columns:48px minmax(0,1fr) auto}.tier-row-title{padding:9px;font-size:13px}.tier-row-tools{gap:4px;padding:4px}.tier-icon-btn{width:34px;height:34px}.tier-manager-actions{width:100%}.tier-plus-btn{flex:1}}
 </style>
-<script id="tier-list-editor-v1-script">
+<script id="tier-list-editor-v2-script">
 (function(){
-  const oldPanel=document.querySelector('.builder-panel');
-  if(!oldPanel || document.getElementById('builderTierManager')) return;
-  const manager=document.createElement('div'); manager.id='builderTierManager';
-  manager.innerHTML='<div class="tier-manager-head"><div class="tier-manager-title">Build Tier List</div><div class="tier-manager-actions"><button type="button" class="tier-plus-btn" id="tierAddSubtitle">＋ Add / Edit Subtitle</button><button type="button" class="tier-plus-btn" id="tierEditBuild">＋ Add / Edit Build</button></div></div><div id="tierListRows" class="tier-list"></div>';
-  oldPanel.parentNode.insertBefore(manager,oldPanel);
-  oldPanel.id='builderEditorFields';
-  document.body.classList.remove('builder-editing');
-  const addSubtitle=document.getElementById('tierAddSubtitle');
-  const editBuild=document.getElementById('tierEditBuild');
-  function titleFor(b,i){
-    if(builderTab===0) return b.title || (i===0?'No Paid Relics':'Paid Relics');
-    if(builderTab===1) return b.title || b.data?.region || `Region ${i+1}`;
-    if(builderTab===2) return b.title || b.data?.champion || `Champion ${i+1}`;
-    return b.title || b.data?.champion || `Build ${i+1}`;
-  }
-  function openEditor(focusSubtitle=false){
-    document.body.classList.add('builder-editing');
-    if(focusSubtitle){const input=document.getElementById('builderSubtitle'); if(input){input.focus();input.select();}}
-    else {const region=document.getElementById('builderRegionPicker'); if(builderTab===2&&region) region.scrollIntoView({behavior:'smooth',block:'center'}); else {const champ=document.querySelector('#champions');if(champ)champ.scrollIntoView({behavior:'smooth',block:'start'});}}
-  }
-  addSubtitle.addEventListener('click',()=>openEditor(true));
-  editBuild.addEventListener('click',()=>openEditor(false));
-  window.renderTierListRows=function(){
-    const wrap=document.getElementById('tierListRows'); if(!wrap||!Array.isArray(builderStores)||!builderStores[builderTab])return;
-    const store=builderStores[builderTab];wrap.innerHTML='';
-    store.builds.forEach((b,i)=>{
-      const row=document.createElement('div');row.className='tier-row'+(i===builderActiveIndex?' active':'');
-      const label=document.createElement('div');label.className='tier-label';label.textContent=String(i+1).padStart(2,'0');
-      const title=document.createElement('div');title.className='tier-row-title';title.textContent=titleFor(b,i);
-      const tools=document.createElement('div');tools.className='tier-row-tools';
-      const plus=document.createElement('button');plus.type='button';plus.className='tier-icon-btn plus';plus.textContent='+';plus.title='Open and edit this build';plus.setAttribute('aria-label','Open and edit '+title.textContent);
-      plus.addEventListener('click',()=>{if(builderActiveIndex!==i){builderSaveCurrent();store.active=i;builderActiveIndex=i;builderLoadCurrent();builderRenderUI();renderAll();}openEditor(false);});
-      const minus=document.createElement('button');minus.type='button';minus.className='tier-icon-btn minus';minus.textContent='−';minus.title='Remove build';minus.setAttribute('aria-label','Remove '+title.textContent);
-      const fixed=(builderTab===0||builderTab===1);
-      if(fixed || (builderTab===2 && store.builds.length<=1)){minus.disabled=true;minus.style.opacity='.3';minus.title=fixed?'This tab has a fixed number of rows':'Keep at least one row';}
-      else minus.addEventListener('click',()=>{
-        if(builderTab===2){store.builds.splice(i,1);store.active=Math.max(0,Math.min(store.active,store.builds.length-1));builderActiveIndex=store.active;builderLoadCurrent();builderRenderUI();renderAll();return;}
-        if(builderTab===3){if(i===builderActiveIndex){deleteBuilderBuild();}else{store.builds.splice(i,1);if(i<store.active)store.active--;builderActiveIndex=store.active;builderLoadCurrent();builderRenderUI();renderAll();}}
-      });
-      tools.append(plus,minus);row.append(label,title,tools);wrap.appendChild(row);
-    });
-    if(!store.builds.length){const empty=document.createElement('div');empty.className='tier-row';empty.innerHTML='<div class="tier-label">＋</div><div class="tier-row-title">No builds yet. Use “＋ Add / Edit Build” to start.</div><div class="tier-row-tools"></div>';wrap.appendChild(empty);}
-    addSubtitle.textContent=builderTab===0?'＋ Edit Selected Subtitle':'＋ Add / Edit Subtitle';
-    editBuild.textContent=builderTab===3?'＋ Add Build':'＋ Edit Build';
-    editBuild.style.display='inline-block';
-  };
-  const originalRenderUI=window.builderRenderUI;
-  if(typeof originalRenderUI==='function'){
-    window.builderRenderUI=function(){originalRenderUI();renderTierListRows();};
-  }
-  const originalSwitch=window.switchBuilderTab;
-  window.switchBuilderTab=function(i){document.body.classList.remove('builder-editing');originalSwitch(i);renderTierListRows();};
-  const originalAdd=window.addBuilderBuild;
-  window.addBuilderBuild=function(){originalAdd();renderTierListRows();openEditor(false);};
-  const originalDelete=window.deleteBuilderBuild;
-  window.deleteBuilderBuild=function(){originalDelete();renderTierListRows();};
-  const originalUpdateTitle=window.updateBuilderSubtitle;
-  window.updateBuilderSubtitle=function(v){originalUpdateTitle(v);renderTierListRows();};
-  document.addEventListener('DOMContentLoaded',()=>{setTimeout(renderTierListRows,0);});
-  const watcher=new MutationObserver(()=>{if(typeof builderTab!=='undefined'&&typeof builderStores!=='undefined')renderTierListRows();});
-  watcher.observe(document.getElementById('builderBuilds')||oldPanel,{childList:true,subtree:true});
+ const oldPanel=document.querySelector('.builder-panel');if(!oldPanel||document.getElementById('builderTierManager'))return;
+ const manager=document.createElement('div');manager.id='builderTierManager';manager.innerHTML='<div id="tierListRows" class="tier-list"></div>';oldPanel.parentNode.insertBefore(manager,oldPanel);oldPanel.id='builderEditorFields';document.body.classList.remove('builder-editing');
+ function titleFor(b,i){if(builderTab===0)return b.title||(i===0?'No Paid Relics':'Paid Relics');if(builderTab===1)return b.subtitle||b.title||b.data?.region||`Region ${i+1}`;if(builderTab===2)return b.title||b.data?.champion||`Champion ${i+1}`;return b.title||b.data?.champion||`Build ${i+1}`;}
+ function openEditor(){document.body.classList.add('builder-editing');const target=builderTab===2?document.getElementById('builderRegionPicker'):document.querySelector('#champions');if(target)target.scrollIntoView({behavior:'smooth',block:'start'});}
+ window.renderTierListRows=function(){const wrap=document.getElementById('tierListRows');if(!wrap||!Array.isArray(builderStores)||!builderStores[builderTab])return;const store=builderStores[builderTab];wrap.innerHTML='';store.builds.forEach((b,i)=>{const row=document.createElement('div');row.className='tier-row'+(i===builderActiveIndex?' active':'');const label=document.createElement('div');label.className='tier-label';label.textContent=String(i+1).padStart(2,'0');const title=document.createElement('div');title.className='tier-row-title';title.textContent=titleFor(b,i);const tools=document.createElement('div');tools.className='tier-row-tools';const edit=document.createElement('button');edit.type='button';edit.className='tier-edit-btn';edit.textContent='Edit';edit.addEventListener('click',()=>{if(builderActiveIndex!==i){builderSaveCurrent();store.active=i;builderActiveIndex=i;builderLoadCurrent();builderRenderUI();renderAll();}openEditor();});tools.appendChild(edit);
+ if(builderTab===2||builderTab===3){const del=document.createElement('button');del.type='button';del.className='tier-icon-btn minus';del.textContent='−';del.title='Delete build';del.addEventListener('click',()=>{if(builderTab===2){if(store.builds.length<=1)return;store.builds.splice(i,1);store.active=Math.max(0,Math.min(store.active,store.builds.length-1));builderActiveIndex=store.active;builderLoadCurrent();builderRenderUI();renderAll();}else if(i===builderActiveIndex)deleteBuilderBuild();else{store.builds.splice(i,1);if(i<store.active)store.active--;builderActiveIndex=store.active;builderLoadCurrent();builderRenderUI();renderAll();}});tools.appendChild(del);}
+ row.append(label,title,tools);wrap.appendChild(row);});if(!store.builds.length){const empty=document.createElement('div');empty.className='tier-row';empty.innerHTML='<div class="tier-label">—</div><div class="tier-row-title">No builds yet.</div><div class="tier-row-tools"></div>';wrap.appendChild(empty);}};
+ const originalRenderUI=window.builderRenderUI;if(typeof originalRenderUI==='function')window.builderRenderUI=function(){originalRenderUI();renderTierListRows();};const originalSwitch=window.switchBuilderTab;window.switchBuilderTab=function(i){document.body.classList.remove('builder-editing');originalSwitch(i);renderTierListRows();};const originalAdd=window.addBuilderBuild;window.addBuilderBuild=function(){originalAdd();renderTierListRows();openEditor();};const originalDelete=window.deleteBuilderBuild;window.deleteBuilderBuild=function(){originalDelete();renderTierListRows();};const originalUpdateTitle=window.updateBuilderSubtitle;window.updateBuilderSubtitle=function(v){originalUpdateTitle(v);renderTierListRows();};document.addEventListener('DOMContentLoaded',()=>setTimeout(renderTierListRows,0));const watcher=new MutationObserver(()=>{if(typeof builderTab!=='undefined'&&typeof builderStores!=='undefined')renderTierListRows();});watcher.observe(document.getElementById('builderBuilds')||oldPanel,{childList:true,subtree:true});
 })();
 </script>
 
