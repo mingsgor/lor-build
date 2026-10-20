@@ -208,7 +208,21 @@ input[type="search"]::-webkit-search-cancel-button{display:none;-webkit-appearan
 .builder-star.on{color:#f1c40f;text-shadow:0 1px 0 #7a6400}
 #buildStatsSection,#adventureSection,#stars,#bonus,#powerList,#notesSection,.footer-note{display:none!important}
 #exportCapture{background:#fff!important}
-@media(max-width:620px){.builder-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.builder-tab{font-size:12px;padding:10px 5px}.builder-actions button{flex:1}}
+/* Tab 1 build switcher and refined export poster */
+.builder-panel{padding:18px 20px;border-radius:16px;box-shadow:0 8px 26px rgba(35,67,70,.055)}
+.builder-panel>label[for="builderSubtitle"]{font-size:14px;letter-spacing:.01em;margin-bottom:8px}
+.builder-panel #builderSubtitle{font-size:clamp(18px,2.2vw,25px);padding:13px 16px;border-radius:12px;min-height:52px}
+.builder-builds{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0 4px}
+.builder-build-chip{min-width:180px;flex:0 1 auto;border:1px solid #c5d5d1;background:linear-gradient(180deg,#fbfdfc,#f0f6f4);color:#334c51;border-radius:12px;padding:12px 16px;cursor:pointer;font-weight:800;font-size:14px;transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
+.builder-build-chip:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(35,67,70,.08)}
+.builder-build-chip.active{border-color:#d5a82d;background:linear-gradient(180deg,#fff6d9,#ffedb2);color:#6c5208;box-shadow:0 0 0 2px rgba(213,168,45,.16)}
+.builder-actions{margin-top:12px}
+.builder-actions button{border-radius:11px;padding:10px 14px}
+.builder-stars{gap:8px;margin-top:9px}
+.builder-star{width:48px;height:48px;border-radius:13px;background:#f3f7f6;font-size:38px;display:inline-flex;align-items:center;justify-content:center;padding:0;color:#52686d}
+.builder-star.on{color:#f3bd19;text-shadow:0 1px 0 #876800}
+@media(max-width:620px){.builder-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.builder-tab{font-size:12px;padding:10px 5px}.builder-actions button{flex:1}.builder-build-chip{min-width:0;flex:1 1 100%;text-align:left}}
+/* end Tab 1 refinements */
 
 </style>
 
@@ -403,9 +417,9 @@ textarea{background:#fff!important;color:#30464c!important;border-color:#bdcfcb!
 <div class="builder-panel">
  <label for="builderSubtitle">Sub Title</label><input id="builderSubtitle" type="text" placeholder="Enter Sub Title" oninput="updateBuilderSubtitle(this.value)">
  <div id="builderRegionPicker" style="display:none;margin-top:10px"><label for="builderRegionSelect">Region</label><select id="builderRegionSelect" onchange="chooseBuilderRegion(this.value)"></select></div>
- <div class="builder-actions"><button id="builderAddBtn" class="primary" onclick="addBuilderBuild()">＋ Add Build</button><button onclick="deleteBuilderBuild()">Delete Build</button><button onclick="resetBuilderTab()">Reset This Tab</button><button class="primary" onclick="exportBuilderImage('horizontal')">Export Horizontal</button><button onclick="exportBuilderImage('vertical')">Export Vertical</button></div>
+ <div id="builderBuilds" class="builder-builds" aria-label="Choose build"></div>
+ <div class="builder-actions"><button id="builderAddBtn" class="primary" onclick="addBuilderBuild()">＋ Add Build</button><button id="builderDeleteBtn" onclick="deleteBuilderBuild()">Delete Build</button><button id="builderResetBtn" onclick="resetBuilderTab()">Reset This Tab</button><button id="builderExportH" class="primary" onclick="exportBuilderImage('horizontal')">Export Horizontal</button><button id="builderExportV" onclick="exportBuilderImage('vertical')">Export Vertical</button></div>
  <div id="builderStarsWrap"><label style="margin-top:12px">Champion Stars</label><div id="builderStars" class="builder-stars"></div></div>
- <div id="builderBuilds" class="builder-builds"></div>
  <div id="builderHint" style="font-size:12px;color:#62777b;margin-top:9px"></div>
 </div>
 
@@ -5263,19 +5277,46 @@ function initBuilderStores(){
 }
 function builderSaveCurrent(){if(builderLoadingSnapshot||!builderStores[builderTab])return;const b=builderStores[builderTab].builds[builderActiveIndex];if(!b)return;b.data=builderCloneState(state);b.data.builderStars=[...builderStarSet].sort((a,b)=>a-b);}
 function builderLoadCurrent(){const store=builderStores[builderTab];if(!store||!store.builds.length){state=blankBuilderState(builderSelectedRegion||DATA.regions[0]?.name||'Bandle City');builderActiveIndex=0;builderStarSet=new Set([1,2,3]);return}builderActiveIndex=Math.max(0,Math.min(store.active,store.builds.length-1));const b=store.builds[builderActiveIndex];state=builderCloneState(b.data);const saved=b.data.builderStars;if(Array.isArray(saved))builderStarSet=new Set(saved.map(Number).filter(n=>n>=1&&n<=6));else {const count=Math.max(0,Math.min(6,Number(saved??3)));builderStarSet=new Set(Array.from({length:count},(_,i)=>i+1));}if(!state.champion&&builderTab===1)state.region=b.title; if(builderTab===2||builderTab===3)state.region=state.region||builderSelectedRegion||DATA.regions[0]?.name||'Bandle City';}
-function builderUpdateTitle(){const i=builderTab;const input=el('builderSubtitle');if(input)input.value=builderSubtitleValues[i]||'';}
-function builderRenderBuilds(){const store=builderStores[builderTab],wrap=el('builderBuilds');if(!wrap)return;wrap.innerHTML='';store.builds.forEach((b,i)=>{const btn=document.createElement('button');btn.className='builder-build-chip'+(i===builderActiveIndex?' active':'');btn.textContent=(i+1)+'. '+(b.title||b.data?.champion||'Build');btn.onclick=()=>{builderSaveCurrent();store.active=i;builderLoadCurrent();builderRenderUI();renderAll();};wrap.appendChild(btn)});}
+function builderUpdateTitle(){const input=el('builderSubtitle');if(!input)return;const store=builderStores[builderTab];if(builderTab===0){input.value=store?.builds?.[builderActiveIndex]?.title||'No Paid Relics';input.placeholder='Enter build subtitle';}else input.value=builderSubtitleValues[builderTab]||'';}
+function builderRenderBuilds(){const store=builderStores[builderTab],wrap=el('builderBuilds');if(!wrap)return;wrap.innerHTML='';store.builds.forEach((b,i)=>{const btn=document.createElement('button');btn.type='button';btn.className='builder-build-chip'+(i===builderActiveIndex?' active':'');btn.textContent=(i+1)+'. '+(b.title||b.data?.champion||'Build');btn.setAttribute('aria-pressed',String(i===builderActiveIndex));btn.onclick=()=>{builderSaveCurrent();store.active=i;builderActiveIndex=i;builderLoadCurrent();builderRenderUI();renderAll();};wrap.appendChild(btn)});}
 function builderRenderStars(){const box=el('builderStars');if(!box)return;box.innerHTML='';for(let i=1;i<=6;i++){const b=document.createElement('button');const active=builderStarSet.has(i);b.type='button';b.className='builder-star'+(active?' on':'');b.textContent=active?'★':'☆';b.title=`Toggle ${i} star`;b.setAttribute('aria-label',b.title);b.setAttribute('aria-pressed',String(active));b.onclick=()=>{if(builderStarSet.has(i))builderStarSet.delete(i);else builderStarSet.add(i);builderSaveCurrent();builderRenderStars()};box.appendChild(b)}}
-function builderRenderUI(){document.querySelectorAll('.builder-tab').forEach(b=>b.classList.toggle('active',Number(b.dataset.tab)===builderTab));builderUpdateTitle();const regionWrap=el('builderRegionPicker'),sel=el('builderRegionSelect'),add=el('builderAddBtn'),exportH=document.querySelector('button[onclick="exportBuilderImage(\'horizontal\')"]'),exportV=document.querySelector('button[onclick="exportBuilderImage(\'vertical\')"]');if(sel){sel.innerHTML=(DATA.regions||[]).map(r=>`<option value="${esc(r.name)}">${esc(r.name)}</option>`).join('');sel.value=builderSelectedRegion||DATA.regions[0]?.name||''}if(regionWrap)regionWrap.style.display=builderTab===2?'block':'none';if(add)add.style.display=builderTab===3?'inline-block':'none';if(exportH)exportH.style.display=builderTab===0?'none':'inline-block';if(exportV)exportV.style.display=builderTab===1||builderTab===2?'none':'inline-block';const hint=el('builderHint');if(hint)hint.textContent=[`Exactly 2 builds. Rename each build by editing the Sub Title field only.`,`One build per region. Region list and count are loaded from the existing dataset.`,`Choose a region to generate its champion list. Champion order follows the existing champion data; remove individual builds as needed.`,`Free Style: add, delete, and reorder builds using the existing champion and relic selector.`][builderTab];builderRenderBuilds();builderRenderStars();}
+function builderRenderUI(){document.querySelectorAll('.builder-tab').forEach(b=>b.classList.toggle('active',Number(b.dataset.tab)===builderTab));builderUpdateTitle();const regionWrap=el('builderRegionPicker'),sel=el('builderRegionSelect'),add=el('builderAddBtn'),del=el('builderDeleteBtn'),reset=el('builderResetBtn'),exportH=el('builderExportH'),exportV=el('builderExportV');if(sel){sel.innerHTML=(DATA.regions||[]).map(r=>`<option value="${esc(r.name)}">${esc(r.name)}</option>`).join('');sel.value=builderSelectedRegion||DATA.regions[0]?.name||''}if(regionWrap)regionWrap.style.display=builderTab===2?'block':'none';if(add)add.style.display=builderTab===3?'inline-block':'none';if(del)del.style.display=builderTab===0?'none':'inline-block';if(reset)reset.style.display=builderTab===0?'none':'inline-block';if(exportH)exportH.style.display=builderTab===0?'none':'inline-block';if(exportV)exportV.style.display=builderTab===0||builderTab===1||builderTab===2?'none':'inline-block';const hint=el('builderHint');if(hint)hint.textContent=[`Choose a build below to edit its subtitle and settings. Each build has its own selections.`,`One build per region. Region list and count are loaded from the existing dataset.`,`Choose a region to generate its champion list. Champion order follows the existing champion data; remove individual builds as needed.`,`Free Style: add, delete, and reorder builds using the existing champion and relic selector.`][builderTab];builderRenderBuilds();builderRenderStars();}
 function switchBuilderTab(i){builderSaveCurrent();builderTab=i;const st=builderStores[i];builderActiveIndex=st.active||0;if(i===2&&!st.builds.length&&builderSelectedRegion)buildTab3Champions(builderSelectedRegion);builderLoadCurrent();builderRenderUI();renderAll();}
-function updateBuilderSubtitle(v){builderSubtitleValues[builderTab]=v;const store=builderStores[builderTab];if(builderTab===0&&store.builds[builderActiveIndex])store.builds[builderActiveIndex].title=v;else if(builderTab===1&&store.builds[builderActiveIndex])store.builds[builderActiveIndex].subtitle=v;builderRenderBuilds();}
+function updateBuilderSubtitle(v){const store=builderStores[builderTab];if(builderTab===0&&store.builds[builderActiveIndex]){store.builds[builderActiveIndex].title=v;}else{builderSubtitleValues[builderTab]=v;if(builderTab===1&&store.builds[builderActiveIndex])store.builds[builderActiveIndex].subtitle=v;}builderRenderBuilds();}
 function chooseBuilderRegion(r){builderSaveCurrent();builderSelectedRegion=r;state.region=r;if(builderTab===2)buildTab3Champions(r);else if(builderTab===1){const idx=builderStores[1].builds.findIndex(b=>b.title===r);if(idx>=0){builderStores[1].active=idx;builderActiveIndex=idx;builderLoadCurrent()}}builderRenderUI();renderAll();}
 function buildTab3Champions(r){const champs=getRegionChampions(r);builderStores[2].builds=champs.map(c=>({title:c.name,data:{...blankBuilderState(r,c.name),builderStars:[1,2,3]}}));builderStores[2].active=0;builderActiveIndex=0;builderSelectedRegion=r;builderLoadCurrent();}
 function addBuilderBuild(){if(builderTab!==3)return;builderSaveCurrent();const n=builderStores[3].builds.length+1;builderStores[3].builds.push({title:`Build ${n}`,data:{...blankBuilderState(state.region,state.champion),builderStars:[1,2,3]}});builderStores[3].active=builderStores[3].builds.length-1;builderLoadCurrent();builderRenderUI();renderAll()}
 function deleteBuilderBuild(){const store=builderStores[builderTab];if(builderTab===0||builderTab===1){alert('Build count is fixed in this tab.');return}if(!store.builds.length)return;store.builds.splice(builderActiveIndex,1);store.active=Math.max(0,Math.min(builderActiveIndex,store.builds.length-1));builderLoadCurrent();builderRenderUI();renderAll()}
 function resetBuilderTab(){if(!confirm('Reset only the current tab? This clears its build selections and subtitle changes.'))return;const regions=(DATA.regions||[]).map(r=>r.name);if(builderTab===0)builderStores[0]={builds:[{title:'No Paid Relics',data:blankBuilderState(regions[0])},{title:'Paid Relics',data:blankBuilderState(regions[0])}],active:0};if(builderTab===1)builderStores[1]={builds:regions.map(r=>({title:r,data:blankBuilderState(r)})),active:0};if(builderTab===2)builderStores[2]={builds:[],active:0};if(builderTab===3)builderStores[3]={builds:[],active:0};builderSubtitleValues[builderTab]=BUILDER_DEFAULT_SUBTITLES[builderTab];if(builderTab===2)buildTab3Champions(builderSelectedRegion||regions[0]);builderLoadCurrent();builderRenderUI();renderAll()}
 function builderRarityColor(r){const x=String(r||'').toUpperCase();if(x.includes('COMMON'))return '#d9ead3';if(x.includes('RARE'))return '#cfe2f3';if(x.includes('EPIC'))return '#d9d2e9';if(x.includes('LEGENDARY'))return '#fce5cd';return '#d9ead3'}
-async function exportBuilderImage(direction){builderSaveCurrent();const store=builderStores[builderTab];let builds=store.builds.filter(b=>b.data?.champion);if(builderTab===0)builds=store.builds.filter(b=>b.data?.champion);if(!builds.length){alert('Choose a champion in at least one build before exporting.');return}const vertical=direction==='vertical';const root=document.createElement('div');root.style.cssText=`position:fixed;left:-20000px;top:0;width:${vertical?'850px':'1500px'};padding:24px;background:#fff;color:#000;font-family:Arial,sans-serif;box-sizing:border-box;`;const title=document.createElement('div');title.textContent=builderSubtitleValues[builderTab]||'';title.style.cssText='background:#fff2cc;border:2px solid #000;padding:14px;font-size:28px;min-height:34px';root.appendChild(title);const grid=document.createElement('div');grid.style.cssText=`display:grid;grid-template-columns:${vertical?'1fr':'1fr 1fr'};gap:0;border-left:2px solid #000;border-top:0;`;for(const b of builds){const d=b.data,c=DATA.champions.find(x=>x.name===d.champion);const card=document.createElement('div');card.style.cssText='display:grid;grid-template-columns:32% 68%;border-right:2px solid #000;border-bottom:2px solid #000;min-height:230px;';const left=document.createElement('div');left.style.cssText='border-right:2px solid #000;display:flex;flex-direction:column;align-items:center;padding:16px 8px;gap:8px;text-align:center;';if(c?.img){const img=document.createElement('img');img.src=c.img;img.crossOrigin='anonymous';img.style.cssText='width:100px;height:100px;object-fit:cover';left.appendChild(img)}const name=document.createElement('div');name.textContent=d.champion;name.style.cssText='font-size:26px;font-weight:500';left.appendChild(name);const stars=document.createElement('div');const activeStars=Array.isArray(d.builderStars)?new Set(d.builderStars.map(Number)):new Set(Array.from({length:Math.max(0,Math.min(6,Number(d.builderStars??3)))},(_,i)=>i+1));stars.style.cssText='font-size:26px;white-space:nowrap';stars.innerHTML=Array.from({length:6},(_,i)=>activeStars.has(i+1)?'<span style="color:#f1c40f">★</span>':'<span style="color:#777">☆</span>').join('');left.appendChild(stars);card.appendChild(left);const right=document.createElement('div');right.style.cssText='display:flex;flex-direction:column;';const relics=(d.relics||[]).slice(0,3);for(const idx of relics){const r=DATA.relics[idx];if(!r)continue;const row=document.createElement('div');row.style.cssText=`display:grid;grid-template-columns:36% 64%;min-height:76px;border-bottom:2px solid #000;`;const iconCell=document.createElement('div');iconCell.style.cssText='display:flex;align-items:center;justify-content:center;border-right:2px solid #000;padding:8px';if(r.img||r.image||r.icon){const img=document.createElement('img');img.src=r.img||r.image||r.icon;img.crossOrigin='anonymous';img.style.cssText='width:88px;height:88px;object-fit:contain';iconCell.appendChild(img)}const nm=document.createElement('div');nm.textContent=r.name||'';nm.style.cssText=`background:${builderRarityColor(r.rarity)};display:flex;justify-content:center;align-items:flex-start;padding:14px 8px;font-size:22px;text-align:center;`;row.append(iconCell,nm);right.appendChild(row)}if(d.runeKey||d.rune>=0){const rune=DATA.runes[d.rune];if(rune){const row=document.createElement('div');row.textContent=rune.name||'Rune';row.style.cssText='padding:12px;background:#eadcf8;border-bottom:2px solid #000;text-align:center;font-size:20px';right.appendChild(row)}}card.appendChild(right);grid.appendChild(card)}root.appendChild(grid);document.body.appendChild(root);try{const canvas=await html2canvas(root,{scale:2,backgroundColor:'#ffffff',useCORS:true,allowTaint:false,logging:false});const a=document.createElement('a');a.download=`LoR-Build-Tab-${builderTab+1}-${direction}.png`;a.href=canvas.toDataURL('image/png');a.click()}catch(e){alert('Image export failed. Some source images may block capture. '+(e?.message||''))}finally{root.remove()}}
+async function exportBuilderImage(direction){
+ builderSaveCurrent();const store=builderStores[builderTab];
+ let builds=store.builds.filter(b=>b.data?.champion);
+ // Tab 1 exports the selected build as its own polished vertical poster.
+ if(builderTab===0){const selected=store.builds[builderActiveIndex];builds=selected?.data?.champion?[selected]:[];direction='vertical';}
+ if(!builds.length){alert('Choose a champion in at least one build before exporting.');return}
+ const vertical=direction==='vertical';
+ const root=document.createElement('div');
+ root.style.cssText=`position:fixed;left:-20000px;top:0;width:${vertical?'900px':'1600px'};padding:30px;background:#f7f9f6;color:#17272b;font-family:Arial,Helvetica,sans-serif;box-sizing:border-box;`;
+ const overallTitle=document.createElement('div');overallTitle.textContent=builderTab===0?(builds[0].title||'Build'):(builderSubtitleValues[builderTab]||'');
+ overallTitle.style.cssText='background:linear-gradient(135deg,#fff3cd 0%,#ffedb0 100%);border:3px solid #1b292b;border-bottom-width:2px;padding:24px 30px;font-size:42px;line-height:1.15;font-weight:800;letter-spacing:.01em;min-height:44px;box-shadow:0 4px 0 rgba(20,35,36,.04);';root.appendChild(overallTitle);
+ const grid=document.createElement('div');grid.style.cssText=`display:grid;grid-template-columns:${vertical?'1fr':'1fr 1fr'};gap:0;border-left:3px solid #1b292b;border-top:0;background:#fff;`;
+ for(const b of builds){const d=b.data,c=DATA.champions.find(x=>x.name===d.champion);const card=document.createElement('div');card.style.cssText='display:grid;grid-template-columns:34% 66%;border-right:3px solid #1b292b;border-bottom:3px solid #1b292b;min-height:300px;background:#fff;break-inside:avoid;';
+  const left=document.createElement('div');left.style.cssText='border-right:3px solid #1b292b;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:28px 18px;gap:18px;text-align:center;background:linear-gradient(180deg,#ffffff,#fbfcfa);';
+  if(c?.img){const img=document.createElement('img');img.src=c.img;img.crossOrigin='anonymous';img.style.cssText='width:clamp(110px,13vw,180px);height:clamp(110px,13vw,180px);object-fit:cover;border-radius:50%;border:4px solid #e6ece8;box-shadow:0 5px 14px rgba(21,40,43,.12);';left.appendChild(img)}
+  const name=document.createElement('div');name.textContent=d.champion;name.style.cssText='font-size:clamp(26px,2.4vw,40px);line-height:1.12;font-weight:800;letter-spacing:-.025em;overflow-wrap:anywhere;';left.appendChild(name);
+  const stars=document.createElement('div');const activeStars=Array.isArray(d.builderStars)?new Set(d.builderStars.map(Number)):new Set(Array.from({length:Math.max(0,Math.min(6,Number(d.builderStars??3)))},(_,i)=>i+1));stars.style.cssText='font-size:clamp(29px,2.8vw,43px);line-height:1.15;white-space:nowrap;letter-spacing:-.08em;';stars.innerHTML=Array.from({length:6},(_,i)=>activeStars.has(i+1)?'<span style="color:#f4bd16;text-shadow:0 1px 0 #8b6b00">★</span>':'<span style="color:#7d8584">☆</span>').join('');left.appendChild(stars);card.appendChild(left);
+  const right=document.createElement('div');right.style.cssText='display:flex;flex-direction:column;min-width:0;background:#fff;';
+  const relics=(d.relics||[]).slice(0,3);for(const idx of relics){const r=DATA.relics[idx];if(!r)continue;const row=document.createElement('div');row.style.cssText='display:grid;grid-template-columns:34% 66%;min-height:100px;flex:1;border-bottom:3px solid #1b292b;';
+   const iconCell=document.createElement('div');iconCell.style.cssText='display:flex;align-items:center;justify-content:center;border-right:3px solid #1b292b;padding:16px;background:#fff;';if(r.img||r.image||r.icon){const img=document.createElement('img');img.src=r.img||r.image||r.icon;img.crossOrigin='anonymous';img.style.cssText='width:clamp(78px,9vw,130px);height:clamp(78px,9vw,130px);object-fit:contain;filter:drop-shadow(0 3px 4px rgba(0,0,0,.12));';iconCell.appendChild(img)}
+   const nm=document.createElement('div');nm.textContent=r.name||'';nm.style.cssText=`background:${builderRarityColor(r.rarity)};display:flex;justify-content:center;align-items:center;padding:18px 22px;font-size:clamp(22px,2vw,34px);line-height:1.18;font-weight:700;text-align:center;overflow-wrap:anywhere;`;row.append(iconCell,nm);right.appendChild(row)}
+  if(d.runeKey||d.rune>=0){const rune=DATA.runes[d.rune];if(rune){const row=document.createElement('div');row.style.cssText='display:grid;grid-template-columns:34% 66%;min-height:94px;border-bottom:3px solid #1b292b;';const iconCell=document.createElement('div');iconCell.style.cssText='display:flex;align-items:center;justify-content:center;border-right:3px solid #1b292b;padding:12px;background:#fff';if(rune.img||rune.image||rune.icon){const img=document.createElement('img');img.src=rune.img||rune.image||rune.icon;img.crossOrigin='anonymous';img.style.cssText='width:90px;height:90px;object-fit:contain';iconCell.appendChild(img)}const nm=document.createElement('div');nm.textContent=rune.name||'Rune';nm.style.cssText='background:#e8def8;display:flex;justify-content:center;align-items:center;padding:16px;font-size:28px;font-weight:700;text-align:center';row.append(iconCell,nm);right.appendChild(row)}}
+  if(!relics.length&&!(d.runeKey||d.rune>=0)){const empty=document.createElement('div');empty.textContent='Select up to 3 Relics';empty.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;color:#71817e;font-size:24px;font-style:italic;background:#f4f7f4';right.appendChild(empty)}
+  card.appendChild(right);grid.appendChild(card)
+ }
+ root.appendChild(grid);const footer=document.createElement('div');footer.textContent='LEGENDS OF RUNETERRA · PATH OF CHAMPIONS';footer.style.cssText='text-align:right;padding:12px 4px 0;color:#778582;font-size:13px;font-weight:700;letter-spacing:.12em';root.appendChild(footer);document.body.appendChild(root);
+ try{const canvas=await html2canvas(root,{scale:2,backgroundColor:'#f7f9f6',useCORS:true,allowTaint:false,logging:false});const a=document.createElement('a');a.download=`LoR-Build-Tab-${builderTab+1}-${direction}.png`;a.href=canvas.toDataURL('image/png');a.click()}catch(e){alert('Image export failed. Some source images may block capture. '+(e?.message||''))}finally{root.remove()}
+}
 
 initBuilderStores();builderLoadCurrent();builderRenderUI();
 initChampionSearch();
@@ -5286,4 +5327,93 @@ el('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()})
 el('playerNotes').addEventListener('input',e=>{state.notes=e.target.value});
 document.addEventListener('DOMContentLoaded',async()=>{readSharedBuildFromHash();renderAll();try{await loadLiveData()}catch(e){setDataStatus('Live refresh failed · no live dataset loaded')}initBuilderStores();builderLoadCurrent();builderRenderUI();try{applySharedBuild();if(state.champion)await refreshSelectedChampionFromWiki()}catch(e){setDataStatus(`Shared build could not be applied · ${e?.message||e}`)}renderAll();});
 </script>
+
+<style id="tier-list-editor-v1">
+/* Tier-list workflow: keep the build editor collapsed until a plus action is clicked. */
+#builderTierManager{border:1px solid #c6d7d3;border-radius:14px;background:#f8fbfa;padding:12px;margin:0 0 12px}
+.tier-manager-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.tier-manager-title{font-weight:900;font-size:16px;color:#30484e}
+.tier-manager-actions{display:flex;gap:8px;flex-wrap:wrap}
+.tier-plus-btn,.tier-minus-btn,.tier-edit-btn{border:1px solid #c5d5d1;border-radius:9px;background:#fff;color:#30484e;font-weight:900;cursor:pointer;min-height:40px;padding:7px 13px}
+.tier-plus-btn{background:#fff0b8;border-color:#d5a82d;color:#6c5208}
+.tier-list{display:flex;flex-direction:column;gap:8px}
+.tier-row{display:grid;grid-template-columns:72px minmax(0,1fr) auto;align-items:stretch;border:1px solid #c9d7d4;border-radius:10px;overflow:hidden;background:#fff;min-height:58px}
+.tier-label{display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;background:#e4efec;border-right:1px solid #c9d7d4;padding:8px}
+.tier-row.active .tier-label{background:#fff0b8;color:#6c5208}
+.tier-row-title{align-self:center;padding:10px 14px;font-weight:800;overflow-wrap:anywhere}
+.tier-row-tools{display:flex;align-items:center;gap:6px;padding:7px;background:#f4f8f7;border-left:1px solid #dce6e3}
+.tier-icon-btn{width:38px;height:38px;border-radius:8px;border:1px solid #c5d5d1;background:#fff;color:#30484e;font-size:24px;font-weight:800;line-height:1;cursor:pointer}
+.tier-icon-btn.plus{background:#fff0b8;border-color:#d5a82d;color:#6c5208}
+.tier-icon-btn.minus{color:#b54242}
+body:not(.builder-editing) #builderEditorFields,body:not(.builder-editing) .app>section{display:none!important}
+#builderEditorFields{margin-top:12px;padding-top:12px;border-top:1px solid #dce6e3}
+#builderEditorFields .builder-panel{margin:0}
+@media(max-width:620px){.tier-row{grid-template-columns:48px minmax(0,1fr) auto}.tier-row-title{padding:9px;font-size:13px}.tier-row-tools{gap:4px;padding:4px}.tier-icon-btn{width:34px;height:34px}.tier-manager-actions{width:100%}.tier-plus-btn{flex:1}}
+</style>
+<script id="tier-list-editor-v1-script">
+(function(){
+  const oldPanel=document.querySelector('.builder-panel');
+  if(!oldPanel || document.getElementById('builderTierManager')) return;
+  const manager=document.createElement('div'); manager.id='builderTierManager';
+  manager.innerHTML='<div class="tier-manager-head"><div class="tier-manager-title">Build Tier List</div><div class="tier-manager-actions"><button type="button" class="tier-plus-btn" id="tierAddSubtitle">＋ Add / Edit Subtitle</button><button type="button" class="tier-plus-btn" id="tierEditBuild">＋ Add / Edit Build</button></div></div><div id="tierListRows" class="tier-list"></div>';
+  oldPanel.parentNode.insertBefore(manager,oldPanel);
+  oldPanel.id='builderEditorFields';
+  document.body.classList.remove('builder-editing');
+  const addSubtitle=document.getElementById('tierAddSubtitle');
+  const editBuild=document.getElementById('tierEditBuild');
+  function titleFor(b,i){
+    if(builderTab===0) return b.title || (i===0?'No Paid Relics':'Paid Relics');
+    if(builderTab===1) return b.title || b.data?.region || `Region ${i+1}`;
+    if(builderTab===2) return b.title || b.data?.champion || `Champion ${i+1}`;
+    return b.title || b.data?.champion || `Build ${i+1}`;
+  }
+  function openEditor(focusSubtitle=false){
+    document.body.classList.add('builder-editing');
+    if(focusSubtitle){const input=document.getElementById('builderSubtitle'); if(input){input.focus();input.select();}}
+    else {const region=document.getElementById('builderRegionPicker'); if(builderTab===2&&region) region.scrollIntoView({behavior:'smooth',block:'center'}); else {const champ=document.querySelector('#champions');if(champ)champ.scrollIntoView({behavior:'smooth',block:'start'});}}
+  }
+  addSubtitle.addEventListener('click',()=>openEditor(true));
+  editBuild.addEventListener('click',()=>openEditor(false));
+  window.renderTierListRows=function(){
+    const wrap=document.getElementById('tierListRows'); if(!wrap||!Array.isArray(builderStores)||!builderStores[builderTab])return;
+    const store=builderStores[builderTab];wrap.innerHTML='';
+    store.builds.forEach((b,i)=>{
+      const row=document.createElement('div');row.className='tier-row'+(i===builderActiveIndex?' active':'');
+      const label=document.createElement('div');label.className='tier-label';label.textContent=String(i+1).padStart(2,'0');
+      const title=document.createElement('div');title.className='tier-row-title';title.textContent=titleFor(b,i);
+      const tools=document.createElement('div');tools.className='tier-row-tools';
+      const plus=document.createElement('button');plus.type='button';plus.className='tier-icon-btn plus';plus.textContent='+';plus.title='Open and edit this build';plus.setAttribute('aria-label','Open and edit '+title.textContent);
+      plus.addEventListener('click',()=>{if(builderActiveIndex!==i){builderSaveCurrent();store.active=i;builderActiveIndex=i;builderLoadCurrent();builderRenderUI();renderAll();}openEditor(false);});
+      const minus=document.createElement('button');minus.type='button';minus.className='tier-icon-btn minus';minus.textContent='−';minus.title='Remove build';minus.setAttribute('aria-label','Remove '+title.textContent);
+      const fixed=(builderTab===0||builderTab===1);
+      if(fixed || (builderTab===2 && store.builds.length<=1)){minus.disabled=true;minus.style.opacity='.3';minus.title=fixed?'This tab has a fixed number of rows':'Keep at least one row';}
+      else minus.addEventListener('click',()=>{
+        if(builderTab===2){store.builds.splice(i,1);store.active=Math.max(0,Math.min(store.active,store.builds.length-1));builderActiveIndex=store.active;builderLoadCurrent();builderRenderUI();renderAll();return;}
+        if(builderTab===3){if(i===builderActiveIndex){deleteBuilderBuild();}else{store.builds.splice(i,1);if(i<store.active)store.active--;builderActiveIndex=store.active;builderLoadCurrent();builderRenderUI();renderAll();}}
+      });
+      tools.append(plus,minus);row.append(label,title,tools);wrap.appendChild(row);
+    });
+    if(!store.builds.length){const empty=document.createElement('div');empty.className='tier-row';empty.innerHTML='<div class="tier-label">＋</div><div class="tier-row-title">No builds yet. Use “＋ Add / Edit Build” to start.</div><div class="tier-row-tools"></div>';wrap.appendChild(empty);}
+    addSubtitle.textContent=builderTab===0?'＋ Edit Selected Subtitle':'＋ Add / Edit Subtitle';
+    editBuild.textContent=builderTab===3?'＋ Add Build':'＋ Edit Build';
+    editBuild.style.display='inline-block';
+  };
+  const originalRenderUI=window.builderRenderUI;
+  if(typeof originalRenderUI==='function'){
+    window.builderRenderUI=function(){originalRenderUI();renderTierListRows();};
+  }
+  const originalSwitch=window.switchBuilderTab;
+  window.switchBuilderTab=function(i){document.body.classList.remove('builder-editing');originalSwitch(i);renderTierListRows();};
+  const originalAdd=window.addBuilderBuild;
+  window.addBuilderBuild=function(){originalAdd();renderTierListRows();openEditor(false);};
+  const originalDelete=window.deleteBuilderBuild;
+  window.deleteBuilderBuild=function(){originalDelete();renderTierListRows();};
+  const originalUpdateTitle=window.updateBuilderSubtitle;
+  window.updateBuilderSubtitle=function(v){originalUpdateTitle(v);renderTierListRows();};
+  document.addEventListener('DOMContentLoaded',()=>{setTimeout(renderTierListRows,0);});
+  const watcher=new MutationObserver(()=>{if(typeof builderTab!=='undefined'&&typeof builderStores!=='undefined')renderTierListRows();});
+  watcher.observe(document.getElementById('builderBuilds')||oldPanel,{childList:true,subtree:true});
+})();
+</script>
+
 </body></html>
